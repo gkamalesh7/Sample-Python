@@ -3,6 +3,8 @@
 import requests
 import sys
 import configparser
+import SendManager
+import RPCMsg
 
 from ncclient import manager
 RTR1_MGR = manager.connect(host= "ios-xe-mgmt.cisco.com",
@@ -29,7 +31,7 @@ def GetConfig():
     # Show command that we need to execute
     command = "show ip int brief"
 
-    config_details = SendCommandToDevice(command)
+    config_details = SendManager.SendCommandToDevice(command, Device_Type, Host, Username, Password)
     if config_details == 0:
         return "error in the function"
 
@@ -52,7 +54,7 @@ def DeleteConfig():
     </config>
     '''
 
-    send_return = sendmanager(rpc_msg %InterfaceName)
+    send_return = SendManager.sendmanager(rpc_msg % InterfaceName, Host, Port, Username, Password)
 
     if send_return == 0:
         return "error in the function"
@@ -63,7 +65,7 @@ def DeleteConfig():
 
 @app.route('/CreateInterface')
 def CreateInterface():
-    print(addressLoopback)
+
     creation_rpc = '''
     <config>
     <native xmlns="http://cisco.com/ns/yang/Cisco-IOS-XE-native">
@@ -84,44 +86,13 @@ def CreateInterface():
     </config>
     '''
 
-    sendreturn = sendmanager(creation_rpc %(InterfaceName,addressLoopback,Netmask))
+    sendreturn = SendManager.sendmanager(creation_rpc % (InterfaceName, addressLoopback, Netmask), Host, Port, Username, Password)
 
 
     if sendreturn == 0:
         return "error in the function"
     else:
         return "Created the interface"
-
-
-## Function to send the required interface level details to the deice using connect manager
-def sendmanager(rpc_msg):
-
-    with manager.connect(host= Host, port= Port, username= Username, password= Password,hostkey_verify=False) as m:
-        send = m.edit_config(rpc_msg , target='running')
-
-def SendCommandToDevice(command):
-    from netmiko import ConnectHandler
-    from getpass import getpass
-
-# hardcoded data for the device
-#    cisco1 = {
-#        "device_type": Device_Type,
-#        "host": Host,
-#        "username": Username,
-#        "password": Password,
-#    }
-    cisco1 = {
-            "device_type": Device_Type,
-            "host": Host,
-            "username": Username,
-            "password": Password,
-        }
-
-    with ConnectHandler(**cisco1) as net_connect:
-        output = net_connect.send_command(command)
-
-    # Automatically cleans-up the output so that only the show output is returned
-    return output
 
 
 # If we're running in stand alone mode, run the application
@@ -141,9 +112,6 @@ if __name__ == '__main__':
         Netmask = config.get('0', "Netmask")
 
     except:
-        print
-        "Config file not found"
-        print
-        "v2x_exec.exe -h for help"
+        print("Config file not found")
         sys.exit(0)
     app.run(debug=True)
