@@ -13,13 +13,13 @@ app = Flask(__name__)
 
 
 # Create a URL route in our application for "/"
-@app.route('/GetConfig')
+@app.route('/GetConfig', methods=['GET'])
 # function used to get the configurations of a device
 def getconfig():
-    # Show command that we need to execute
-    command = "show ip int brief"
+    get_content = request.get_json()
+    get_api_command = get_content["command"]
 
-    config_details = SendManager.SendCommandToDevice(command, Device_Type, Host, Username, Password)
+    config_details = SendManager.SendCommandToDevice(get_api_command, Device_Type, Host, Username, Password)
     if config_details == 0:
         return "error in the function"
 
@@ -30,9 +30,10 @@ def getconfig():
 @app.route('/DeleteConfig', methods=['DELETE'])
 # function used to get the configurations of a device
 def deleteconfig():
-    content = request.get_json()
-    interfacename = content["name"]
-    print(interfacename)
+    # Parse and store the json  payload in content
+    delete_content = request.get_json()
+    delete_interface_name = delete_content["name"]
+    #    print(delete_interface_name)
     rpc_msg = '''
     <config>
       <native xmlns="http://cisco.com/ns/yang/Cisco-IOS-XE-native">      <interface>
@@ -44,7 +45,7 @@ def deleteconfig():
     </config>
     '''
 
-    send_return = SendManager.sendmanager(rpc_msg % interfacename, Host, Port, Username, Password)
+    send_return = SendManager.sendmanager(rpc_msg % delete_interface_name, Host, Port, Username, Password)
 
     if send_return == 0:
         return "error in the function"
@@ -53,15 +54,15 @@ def deleteconfig():
 
 
 @app.route('/CreateInterface', methods=['POST'])
-def createinterface():
-    content = request.get_json()
-    print(content)
-    ip = content["ip"]
-    name = content["name"]
-    netmask = content["netmask"]
-    print(ip)
-    print(name)
-    print(netmask)
+def create_interface():
+    create_content = request.get_json()
+    print(create_content)
+    loopback_ip = create_content["ip"]
+    interface_name = create_content["name"]
+    interface_netmask = create_content["netmask"]
+    #    print(loopback_ip)
+    #    print(interface_name)
+    #    print(interfacenet_mask)
 
     creation_rpc = '''
     <config>
@@ -83,7 +84,8 @@ def createinterface():
     </config>
     '''
 
-    sendreturn = SendManager.sendmanager(creation_rpc % (name, ip, netmask), Host, Port, Username,
+    sendreturn = SendManager.sendmanager(creation_rpc % (interface_name, loopback_ip, interface_netmask), Host, Port,
+                                         Username,
                                          Password)
 
     if sendreturn == 0:
@@ -99,8 +101,6 @@ if __name__ == '__main__':
     # Reading config file
     try:
         config.read("Config.ini")
-        addressLoopback = config.get('0', "LoopBackIP")
-        InterfaceName = config.get('0', "InterfaceName")
         Username = config.get('0', "Username")
         Password = config.get('0', "Password")
         Device_Type = config.get('0', "Device_Type")
@@ -112,4 +112,5 @@ if __name__ == '__main__':
         print("Config file not found")
         sys.exit(0)
     app.run(debug=True)
+
 
