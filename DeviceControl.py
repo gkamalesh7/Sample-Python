@@ -1,33 +1,21 @@
 #!/usr/bin/env python
 
-import requests
 import sys
 import configparser
 import SendManager
-import RPCMsg
-
-from ncclient import manager
-RTR1_MGR = manager.connect(host= "ios-xe-mgmt.cisco.com",
-                           port = 830,
-                           username = "developer",
-                           password = "C1sco12345",
-                           hostkey_verify = False)
-
-
 
 from flask import (
-    Flask,
-    render_template
+    Flask, request,
 )
 
 # Creating the application instance
 app = Flask(__name__)
 
+
 # Create a URL route in our application for "/"
 @app.route('/GetConfig')
 # function used to get the configurations of a device
-def GetConfig():
-
+def getconfig():
     # Show command that we need to execute
     command = "show ip int brief"
 
@@ -38,11 +26,13 @@ def GetConfig():
     else:
         return config_details
 
-@app.route('/DeleteConfig')
 
+@app.route('/DeleteConfig', methods=['DELETE'])
 # function used to get the configurations of a device
-def DeleteConfig():
-
+def deleteconfig():
+    content = request.get_json()
+    interfacename = content["name"]
+    print(interfacename)
     rpc_msg = '''
     <config>
       <native xmlns="http://cisco.com/ns/yang/Cisco-IOS-XE-native">      <interface>
@@ -54,7 +44,7 @@ def DeleteConfig():
     </config>
     '''
 
-    send_return = SendManager.sendmanager(rpc_msg % InterfaceName, Host, Port, Username, Password)
+    send_return = SendManager.sendmanager(rpc_msg % interfacename, Host, Port, Username, Password)
 
     if send_return == 0:
         return "error in the function"
@@ -62,9 +52,16 @@ def DeleteConfig():
         return "deleted the interface"
 
 
-
-@app.route('/CreateInterface')
-def CreateInterface():
+@app.route('/CreateInterface', methods=['POST'])
+def createinterface():
+    content = request.get_json()
+    print(content)
+    ip = content["ip"]
+    name = content["name"]
+    netmask = content["netmask"]
+    print(ip)
+    print(name)
+    print(netmask)
 
     creation_rpc = '''
     <config>
@@ -86,8 +83,8 @@ def CreateInterface():
     </config>
     '''
 
-    sendreturn = SendManager.sendmanager(creation_rpc % (InterfaceName, addressLoopback, Netmask), Host, Port, Username, Password)
-
+    sendreturn = SendManager.sendmanager(creation_rpc % (name, ip, netmask), Host, Port, Username,
+                                         Password)
 
     if sendreturn == 0:
         return "error in the function"
@@ -107,7 +104,7 @@ if __name__ == '__main__':
         Username = config.get('0', "Username")
         Password = config.get('0', "Password")
         Device_Type = config.get('0', "Device_Type")
-        Host =  config.get('0', "Host")
+        Host = config.get('0', "Host")
         Port = config.get('0', "Port")
         Netmask = config.get('0', "Netmask")
 
@@ -115,3 +112,4 @@ if __name__ == '__main__':
         print("Config file not found")
         sys.exit(0)
     app.run(debug=True)
+
